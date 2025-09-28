@@ -1,0 +1,1311 @@
+openapi: 3.0.3
+info:
+  title: License Management System API
+  description: |
+    A comprehensive license management system with admin and customer portals, plus SDK integration.
+    
+    ## Features
+    - **User Management**: Admin and customer authentication with role-based access control
+    - **Subscription Pack Management**: Create and manage subscription plans
+    - **Customer Management**: Full customer lifecycle management
+    - **Subscription Lifecycle**: Request, approve, assign, and manage subscriptions
+    - **SDK Integration**: API key-based authentication for mobile/desktop applications
+    
+    ## Authentication
+    The API supports two authentication methods:
+    - **JWT Bearer Token**: For frontend web applications (`Authorization: Bearer <token>`)
+    - **API Key**: For SDK applications (`X-API-Key: <api_key>`)
+    
+    ## Business Rules
+    - Only one active subscription per customer at any time
+    - Subscription lifecycle: requested → approved → active → inactive/expired
+    - Customer requests require admin approval before activation
+    - Soft delete for customers and subscription packs
+  version: 1.0.0
+  contact:
+    name: API Support
+    url: http://www.swagger.io/support
+    email: support@swagger.io
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.example.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  # Frontend Authentication Endpoints
+  /api/admin/login:
+    post:
+      tags:
+        - Authentication
+      summary: Admin login
+      description: Authenticate admin user and return JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid request format
+        '401':
+          description: Invalid credentials
+
+  /api/customer/login:
+    post:
+      tags:
+        - Authentication
+      summary: Customer login
+      description: Authenticate customer user and return JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid request format
+        '401':
+          description: Invalid credentials
+
+  /api/customer/signup:
+    post:
+      tags:
+        - Authentication
+      summary: Customer signup
+      description: Register a new customer account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid request format
+        '409':
+          description: Email already registered
+
+  # SDK Authentication Endpoints
+  /sdk/auth/login:
+    post:
+      tags:
+        - SDK Authentication
+      summary: SDK login
+      description: Authenticate user for SDK access and return API key
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: SDK authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SDKLoginResponse'
+        '400':
+          description: Invalid request format
+        '401':
+          description: Invalid credentials
+
+  # Admin Customer Management
+  /api/v1/admin/customers:
+    get:
+      tags:
+        - Admin Customer Management
+      summary: List customers
+      description: Get paginated list of all customers
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          description: Search term
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customers retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+
+    post:
+      tags:
+        - Admin Customer Management
+      summary: Create customer
+      description: Create a new customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+      responses:
+        '201':
+          description: Customer created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          description: Invalid request format
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '409':
+          description: Email already registered
+
+  /api/v1/admin/customers/{id}:
+    get:
+      tags:
+        - Admin Customer Management
+      summary: Get customer
+      description: Get customer details by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Customer ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Customer retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Customer not found
+
+    put:
+      tags:
+        - Admin Customer Management
+      summary: Update customer
+      description: Update customer information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Customer ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCustomerRequest'
+      responses:
+        '200':
+          description: Customer updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          description: Invalid request format
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Customer not found
+
+    delete:
+      tags:
+        - Admin Customer Management
+      summary: Delete customer
+      description: Soft delete a customer account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Customer ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Customer deleted successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Customer not found
+
+  # Admin Subscription Pack Management
+  /api/v1/admin/packs:
+    get:
+      tags:
+        - Admin Subscription Pack Management
+      summary: List subscription packs
+      description: Get paginated list of all subscription packs
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          description: Search term
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Subscription packs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+
+    post:
+      tags:
+        - Admin Subscription Pack Management
+      summary: Create subscription pack
+      description: Create a new subscription pack
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePackRequest'
+      responses:
+        '201':
+          description: Subscription pack created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPack'
+        '400':
+          description: Invalid request format
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '409':
+          description: SKU already exists
+
+  /api/v1/admin/packs/{id}:
+    get:
+      tags:
+        - Admin Subscription Pack Management
+      summary: Get subscription pack
+      description: Get subscription pack details by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Subscription Pack ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Subscription pack retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPack'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Subscription pack not found
+
+    put:
+      tags:
+        - Admin Subscription Pack Management
+      summary: Update subscription pack
+      description: Update subscription pack information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Subscription Pack ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePackRequest'
+      responses:
+        '200':
+          description: Subscription pack updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPack'
+        '400':
+          description: Invalid request format
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Subscription pack not found
+
+    delete:
+      tags:
+        - Admin Subscription Pack Management
+      summary: Delete subscription pack
+      description: Soft delete a subscription pack
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Subscription Pack ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Subscription pack deleted successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Subscription pack not found
+
+  # Admin Subscription Management
+  /api/v1/admin/subscriptions:
+    get:
+      tags:
+        - Admin Subscription Management
+      summary: List subscriptions
+      description: Get paginated list of all subscriptions
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: [requested, approved, active, inactive, expired]
+        - name: customer_id
+          in: query
+          description: Filter by customer ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Subscriptions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+
+    post:
+      tags:
+        - Admin Subscription Management
+      summary: Create subscription
+      description: Create a new subscription for a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubscriptionRequest'
+      responses:
+        '201':
+          description: Subscription created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          description: Invalid request format
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Customer or subscription pack not found
+        '409':
+          description: Customer already has an active subscription
+
+  /api/v1/admin/subscriptions/{id}:
+    get:
+      tags:
+        - Admin Subscription Management
+      summary: Get subscription
+      description: Get subscription details by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Subscription ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Subscription retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Subscription not found
+
+    delete:
+      tags:
+        - Admin Subscription Management
+      summary: Delete subscription
+      description: Delete a subscription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Subscription ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Subscription deleted successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Subscription not found
+
+  /api/v1/admin/subscriptions/{id}/approve:
+    put:
+      tags:
+        - Admin Subscription Management
+      summary: Approve subscription
+      description: Approve a subscription request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Subscription ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Subscription approved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          description: Subscription cannot be approved in current status
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Subscription not found
+
+  /api/v1/admin/subscriptions/{id}/assign:
+    put:
+      tags:
+        - Admin Subscription Management
+      summary: Assign subscription
+      description: Assign an approved subscription to make it active
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Subscription ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Subscription assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          description: Subscription cannot be assigned in current status
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Subscription not found
+        '409':
+          description: Customer already has an active subscription
+
+  /api/v1/admin/subscriptions/{id}/unassign:
+    put:
+      tags:
+        - Admin Subscription Management
+      summary: Unassign subscription
+      description: Unassign an active subscription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Subscription ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Subscription unassigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          description: Only active subscriptions can be unassigned
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+        '404':
+          description: Subscription not found
+
+  # Customer Profile Management
+  /api/v1/customer/profile:
+    get:
+      tags:
+        - Customer Profile
+      summary: Get profile
+      description: Get current customer's profile information
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Customer access required
+
+    put:
+      tags:
+        - Customer Profile
+      summary: Update profile
+      description: Update current customer's profile information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCustomerRequest'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          description: Invalid request format
+        '401':
+          description: Unauthorized
+        '403':
+          description: Customer access required
+
+  # Customer Subscription Management
+  /api/v1/customer/subscription:
+    get:
+      tags:
+        - Customer Subscription
+      summary: Get current subscription
+      description: Get current customer's active subscription
+      responses:
+        '200':
+          description: Current subscription retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Customer access required
+        '404':
+          description: No active subscription found
+
+  /api/v1/customer/subscription/request:
+    post:
+      tags:
+        - Customer Subscription
+      summary: Request subscription
+      description: Request a new subscription for current customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRequest'
+      responses:
+        '201':
+          description: Subscription request created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          description: Invalid request format
+        '401':
+          description: Unauthorized
+        '403':
+          description: Customer access required
+        '409':
+          description: Customer already has an active subscription
+
+  /api/v1/customer/subscription/deactivate:
+    put:
+      tags:
+        - Customer Subscription
+      summary: Deactivate subscription
+      description: Deactivate current customer's active subscription
+      responses:
+        '200':
+          description: Subscription deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Customer access required
+        '404':
+          description: No active subscription found
+
+  /api/v1/customer/subscription/history:
+    get:
+      tags:
+        - Customer Subscription
+      summary: Get subscription history
+      description: Get paginated history of current customer's subscriptions
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            default: created_at
+        - name: order
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Subscription history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Customer access required
+
+  # SDK Subscription Management
+  /sdk/v1/subscription:
+    get:
+      tags:
+        - SDK Subscription
+      summary: Get current subscription
+      description: Get the customer's currently active subscription
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Current subscription retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '401':
+          description: Invalid API key
+        '404':
+          description: No active subscription found
+
+  /sdk/v1/subscription/request:
+    post:
+      tags:
+        - SDK Subscription
+      summary: Request subscription
+      description: Request a new subscription for the customer
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRequest'
+      responses:
+        '201':
+          description: Subscription request created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          description: Invalid request format
+        '401':
+          description: Invalid API key
+        '409':
+          description: Customer already has an active subscription
+
+  /sdk/v1/subscription/deactivate:
+    put:
+      tags:
+        - SDK Subscription
+      summary: Deactivate subscription
+      description: Deactivate the customer's current active subscription
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Subscription deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '401':
+          description: Invalid API key
+        '404':
+          description: No active subscription found
+
+  /sdk/v1/subscription/history:
+    get:
+      tags:
+        - SDK Subscription
+      summary: Get subscription history
+      description: Get paginated history of customer's subscriptions
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            default: created_at
+        - name: order
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Subscription history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '401':
+          description: Invalid API key
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token for frontend authentication
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API Key for SDK authentication
+
+  schemas:
+    # Authentication Schemas
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+        password:
+          type: string
+          minLength: 6
+          description: User password
+
+    SignupRequest:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+        password:
+          type: string
+          minLength: 6
+          description: User password
+        name:
+          type: string
+          description: Customer full name
+        phone:
+          type: string
+          description: Customer phone number
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT authentication token
+        user:
+          $ref: '#/components/schemas/User'
+
+    SDKLoginResponse:
+      type: object
+      properties:
+        api_key:
+          type: string
+          description: API key for SDK authentication
+        user:
+          $ref: '#/components/schemas/User'
+
+    # Core Entity Schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: User ID
+        email:
+          type: string
+          format: email
+          description: User email address
+        role:
+          type: string
+          enum: [admin, customer]
+          description: User role
+        created_at:
+          type: string
+          format: date-time
+          description: User creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: User last update timestamp
+
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Customer ID
+        user_id:
+          type: integer
+          description: Associated user ID
+        name:
+          type: string
+          description: Customer full name
+        phone:
+          type: string
+          description: Customer phone number
+        created_at:
+          type: string
+          format: date-time
+          description: Customer creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Customer last update timestamp
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Customer deletion timestamp (soft delete)
+        user:
+          $ref: '#/components/schemas/User'
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subscription'
+
+    SubscriptionPack:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Subscription pack ID
+        name:
+          type: string
+          description: Pack display name
+        description:
+          type: string
+          description: Pack description
+        sku:
+          type: string
+          description: Unique pack identifier
+        price:
+          type: number
+          format: decimal
+          description: Pack price
+        validity_months:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Validity period in months
+        created_at:
+          type: string
+          format: date-time
+          description: Pack creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Pack last update timestamp
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Pack deletion timestamp (soft delete)
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subscription'
+
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Subscription ID
+        customer_id:
+          type: integer
+          description: Customer ID
+        pack_id:
+          type: integer
+          description: Subscription pack ID
+        status:
+          type: string
+          enum: [requested, approved, active, inactive, expired]
+          description: Subscription status
+        requested_at:
+          type: string
+          format: date-time
+          description: Request timestamp
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Approval timestamp
+        assigned_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Assignment timestamp
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Expiry timestamp
+        deactivated_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Deactivation timestamp
+        created_at:
+          type: string
+          format: date-time
+          description: Subscription creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Subscription last update timestamp
+        customer:
+          $ref: '#/components/schemas/Customer'
+        pack:
+          $ref: '#/components/schemas/SubscriptionPack'
+
+    # Request/Response Schemas
+    CreateCustomerRequest:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+          description: Customer email address
+        password:
+          type: string
+          minLength: 6
+          description: Customer password
+        name:
+          type: string
+          description: Customer full name
+        phone:
+          type: string
+          description: Customer phone number
+
+    UpdateCustomerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Customer full name
+        phone:
+          type: string
+          description: Customer phone number
+
+    CreatePackRequest:
+      type: object
+      required:
+        - name
+        - sku
+        - price
+        - validity_months
+      properties:
+        name:
+          type: string
+          description: Pack display name
+        description:
+          type: string
+          description: Pack description
+        sku:
+          type: string
+          description: Unique pack identifier
+        price:
+          type: number
+          format: decimal
+          minimum: 0
+          description: Pack price
+        validity_months:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Validity period in months
+
+    UpdatePackRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Pack display name
+        description:
+          type: string
+          description: Pack description
+        price:
+          type: number
+          format: decimal
+          minimum: 0
+          description: Pack price
+        validity_months:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Validity period in months
+
+    CreateSubscriptionRequest:
+      type: object
+      required:
+        - customer_id
+        - pack_sku
+      properties:
+        customer_id:
+          type: integer
+          description: Customer ID
+        pack_sku:
+          type: string
+          description: Subscription pack SKU
+
+    SubscriptionRequest:
+      type: object
+      required:
+        - pack_sku
+      properties:
+        pack_sku:
+          type: string
+          description: Subscription pack SKU
+
+    # Response Schemas
+    PaginatedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Request success status
+        data:
+          type: array
+          items:
+            type: object
+          description: Response data
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total number of items
+            page:
+              type: integer
+              description: Current page number
+            limit:
+              type: integer
+              description: Items per page
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Request success status
+        error:
+          type: string
+          description: Error message
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Request success status
+        data:
+          type: object
+          description: Response data
+        message:
+          type: string
+          description: Success message
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: SDK Authentication
+    description: SDK-specific authentication endpoints
+  - name: Admin Customer Management
+    description: Admin endpoints for customer management
+  - name: Admin Subscription Pack Management
+    description: Admin endpoints for subscription pack management
+  - name: Admin Subscription Management
+    description: Admin endpoints for subscription management
+  - name: Customer Profile
+    description: Customer profile management endpoints
+  - name: Customer Subscription
+    description: Customer subscription management endpoints
+  - name: SDK Subscription
+    description: SDK subscription management endpoints
